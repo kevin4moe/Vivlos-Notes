@@ -1,9 +1,9 @@
 {
-  "name": "firefox-quick-prompt-notes",
+  "name": "vivlos-notes",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Firefox WebExtension for saving and searching quick prompt notes, URLs, and snippets.",
+  "description": "Firefox WebExtension for saving and searching quick notes, prompts, URLs, and snippets.",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",

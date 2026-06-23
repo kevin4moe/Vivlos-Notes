@@ -1,5 +1,6 @@
 const NOTES_KEY = 'quickPromptNotes.notes';
 const INDEX_KEY = 'quickPromptNotes.index';
+const SETTINGS_KEY = 'quickPromptNotes.settings';
 
 const STOP_WORDS = new Set([
   'a',
@@ -63,7 +64,7 @@ export function tokenize(value) {
 }
 
 function noteText(note) {
-  return [note.title, note.body, note.url, note.tags?.join(' ')].filter(Boolean).join(' ');
+  return [note.title, note.body, note.url, note.domain, note.tags?.join(' ')].filter(Boolean).join(' ');
 }
 
 function uniqueTokens(values) {
@@ -100,22 +101,28 @@ async function persist(notes) {
   });
 }
 
-export async function loadData() {
-  const data = await storage.get([NOTES_KEY, INDEX_KEY]);
-  const notes = Array.isArray(data[NOTES_KEY]) ? data[NOTES_KEY] : [];
-  const index = data[INDEX_KEY]?.byToken ? data[INDEX_KEY] : buildIndex(notes);
+async function persistSettings(settings) {
+  await storage.set({ [SETTINGS_KEY]: normalizeSettings(settings) });
+}
 
-  if (!data[INDEX_KEY]?.byToken) {
-    await storage.set({ [INDEX_KEY]: index });
+export async function loadData() {
+  const data = await storage.get([NOTES_KEY, INDEX_KEY, SETTINGS_KEY]);
+  const rawNotes = Array.isArray(data[NOTES_KEY]) ? data[NOTES_KEY] : [];
+  const notes = rawNotes.map(normalizeNote);
+  const index = data[INDEX_KEY]?.byToken ? data[INDEX_KEY] : buildIndex(notes);
+  const settings = normalizeSettings(data[SETTINGS_KEY]);
+
+  if (!data[INDEX_KEY]?.byToken || notesChanged(rawNotes, notes)) {
+    await storage.set({ [NOTES_KEY]: notes, [INDEX_KEY]: index });
   }
 
-  return { notes, index };
+  return { notes, index, settings };
 }
 
 export async function addNote(input) {
   const { notes } = await loadData();
   const now = Date.now();
-  const note = {
+  const note = normalizeNote({
     id: crypto.randomUUID(),
     title: input.title?.trim() || firstLine(input.body) || 'Untitled note',
     body: input.body?.trim() || '',
@@ -123,7 +130,7 @@ export async function addNote(input) {
     tags: normalizeTags(input.tags),
     createdAt: now,
     updatedAt: now
-  };
+  });
   const next = [note, ...notes];
   await persist(next);
   return note;
@@ -133,12 +140,12 @@ export async function updateNote(id, patch) {
   const { notes } = await loadData();
   const next = notes.map((note) => {
     if (note.id !== id) return note;
-    return {
+    return normalizeNote({
       ...note,
       ...patch,
       tags: Object.hasOwn(patch, 'tags') ? normalizeTags(patch.tags) : note.tags,
       updatedAt: Date.now()
-    };
+    });
   });
   await persist(next);
   return next.find((note) => note.id === id);
@@ -153,7 +160,7 @@ export async function deleteNote(id) {
 export async function replaceNotes(notes) {
   const normalized = notes
     .filter((note) => note && (note.body || note.title || note.url))
-    .map((note) => ({
+    .map((note) => normalizeNote({
       id: note.id || crypto.randomUUID(),
       title: String(note.title || firstLine(note.body) || 'Untitled note').trim(),
       body: String(note.body || '').trim(),
@@ -165,6 +172,52 @@ export async function replaceNotes(notes) {
 
   await persist(normalized);
   return normalized;
+}
+
+export async function setFavoriteGroup(tag, favorite) {
+  const { settings } = await loadData();
+  const favorites = new Set(settings.favoriteGroups);
+
+  if (favorite) {
+    favorites.add(tag);
+  } else {
+    favorites.delete(tag);
+  }
+
+  const next = { ...settings, favoriteGroups: [...favorites] };
+  await persistSettings(next);
+  return next;
+}
+
+export function groupNotesByTags(notes, favoriteGroups = []) {
+  const favorites = new Set(favoriteGroups);
+  const groups = new Map();
+
+  for (const note of notes) {
+    for (const tag of note.tags || []) {
+      if (!groups.has(tag)) {
+        const domain = tag === note.domain ? note.domain : '';
+        groups.set(tag, {
+          tag,
+          icon: domain ? note.domainIcon : '',
+          isDomain: Boolean(domain || isDomainTag(tag)),
+          favorite: favorites.has(tag),
+          notes: []
+        });
+      }
+
+      const group = groups.get(tag);
+      group.notes.push(note);
+      if (!group.icon && tag === note.domain) group.icon = note.domainIcon;
+      if (tag === note.domain) group.isDomain = true;
+    }
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+    if (a.isDomain !== b.isDomain) return a.isDomain ? -1 : 1;
+    return b.notes.length - a.notes.length || a.tag.localeCompare(b.tag);
+  });
 }
 
 export function searchNotes(notes, index, query, limit = 24) {
@@ -228,6 +281,88 @@ function normalizeTags(tags) {
 
 function firstLine(value) {
   return String(value || '').split(/\r?\n/).find((line) => line.trim())?.trim().slice(0, 80);
+}
+
+function normalizeNote(note) {
+  const candidateUrl = getValidUrl(note.url) || extractFirstUrl([note.title, note.body].join(' '));
+  const domain = candidateUrl ? getRootDomain(candidateUrl) : '';
+  const tags = normalizeTags(note.tags || []);
+  const nextTags = domain && !tags.includes(domain) ? [domain, ...tags].slice(0, 12) : tags;
+
+  return {
+    ...note,
+    title: String(note.title || firstLine(note.body) || 'Untitled note').trim(),
+    body: String(note.body || '').trim(),
+    url: candidateUrl || '',
+    tags: nextTags,
+    domain,
+    domainIcon: domain ? iconForDomain(domain) : '',
+    createdAt: Number(note.createdAt) || Date.now(),
+    updatedAt: Number(note.updatedAt) || Date.now()
+  };
+}
+
+function normalizeSettings(settings) {
+  return {
+    favoriteGroups: normalizeTags(settings?.favoriteGroups || [])
+  };
+}
+
+function notesChanged(before, after) {
+  if (before.length !== after.length) return true;
+  return after.some((note, index) => {
+    const raw = before[index] || {};
+    return (
+      raw.url !== note.url ||
+      raw.domain !== note.domain ||
+      raw.domainIcon !== note.domainIcon ||
+      raw.title !== note.title ||
+      raw.body !== note.body ||
+      JSON.stringify(raw.tags || []) !== JSON.stringify(note.tags || [])
+    );
+  });
+}
+
+export function getValidUrl(value) {
+  const source = String(value || '').trim();
+  if (!source) return '';
+
+  try {
+    const url = new URL(source);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
+export function extractFirstUrl(value) {
+  const match = String(value || '').match(/https?:\/\/[^\s<>"']+/i);
+  return getValidUrl(match?.[0]?.replace(/[),.;]+$/, ''));
+}
+
+export function getRootDomain(value) {
+  const valid = getValidUrl(value);
+  if (!valid) return '';
+
+  const hostname = new URL(valid).hostname.toLowerCase().replace(/^www\./, '');
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || hostname === 'localhost') return hostname;
+
+  const parts = hostname.split('.');
+  if (parts.length <= 2) return hostname;
+
+  const secondLevelSuffixes = new Set(['co', 'com', 'edu', 'gov', 'net', 'org']);
+  const suffix = parts.at(-1);
+  const second = parts.at(-2);
+  const count = suffix.length === 2 && secondLevelSuffixes.has(second) ? 3 : 2;
+  return parts.slice(-count).join('.');
+}
+
+export function iconForDomain(domain) {
+  return `https://${domain}/favicon.ico`;
+}
+
+function isDomainTag(tag) {
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(tag);
 }
 
 export async function getActiveTab() {

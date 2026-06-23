@@ -71,7 +71,7 @@ function copyNote(note) {
   <main class="popup-shell">
     <header class="topbar">
       <div>
-        <h1>Prompt Notes</h1>
+        <h1>Vivlos Notes</h1>
         <p>{{ notes.length }} saved</p>
       </div>
       <button class="icon-button" type="button" title="Open manager" @click="openManager">□</button>

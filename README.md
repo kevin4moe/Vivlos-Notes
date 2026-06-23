@@ -1,4 +1,4 @@
-# Quick Prompt Notes
+# Vivlos Notes
 
 A Firefox WebExtension built with Vue for saving prompt snippets, URLs, references, and quick notes.
 
@@ -26,6 +26,6 @@ Load `dist` as a temporary add-on in Firefox:
 
 ## Files
 
-- `src/shared/store.js`: storage, indexing, scoring, import/export helpers.
+- `src/shared/store.js`: storage, URL/domain enrichment, indexing, scoring, import/export helpers.
 - `src/popup/App.vue`: small popup search and quick capture UI.
 - `src/manager/App.vue`: full-page note management UI.
