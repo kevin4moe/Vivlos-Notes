@@ -1,0 +1,10 @@
+html,
+body,
+#app {
+  width: 380px;
+  min-height: 520px;
+}
+
+body {
+  overflow: hidden;
+}
