@@ -96,7 +96,7 @@ function exportNotes() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `quick-prompt-notes-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `vivlos-notes-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -172,7 +172,7 @@ function syncUrlDefaults() {
             <small>{{ group.notes.length }} notes</small>
           </button>
           <button class="favorite-button" type="button" :title="group.favorite ? 'Unfavorite group' : 'Favorite group'" @click="toggleFavoriteGroup(group)">
-            {{ group.favorite ? '★' : '☆' }}
+            {{ group.favorite ? 'Fav' : 'Pin' }}
           </button>
         </article>
         <p v-if="!tagGroups.length" class="empty">No tag groups found</p>
@@ -239,17 +239,17 @@ function syncUrlDefaults() {
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
-  background: #f7f3eb;
+  background: var(--surface-soft);
 }
 
 .sidebar {
   min-height: 100vh;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 0.9fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 14px;
   padding: 18px;
-  border-right: 1px solid #dcd6c9;
-  background: #f0ecdf;
+  border-right: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--mist) 0%, var(--surface-soft) 100%);
 }
 
 .sidebar-head,
@@ -274,7 +274,7 @@ h1 {
 
 .sidebar-head p {
   margin-top: 5px;
-  color: #65716d;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -289,20 +289,20 @@ h1 {
   gap: 4px;
   padding: 4px;
   border-radius: 8px;
-  background: #e1dccf;
+  background: rgba(149, 204, 221, 0.42);
 }
 
 .view-tabs button {
   height: 34px;
   border-radius: 6px;
-  color: #40504b;
+  color: var(--ink);
   background: transparent;
   font-weight: 800;
 }
 
 .view-tabs button.active {
-  color: #fffdf8;
-  background: #237a6b;
+  color: var(--surface);
+  background: var(--primary);
 }
 
 .group-list {
@@ -316,7 +316,7 @@ h1 {
 
 .group-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr) 42px;
   gap: 6px;
   align-items: stretch;
 }
@@ -328,21 +328,21 @@ h1 {
   grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  border: 1px solid #ddd7cb;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 10px;
-  color: #18211f;
-  background: #fffdf8;
+  color: var(--ink);
+  background: var(--surface);
   text-align: left;
 }
 
 .group-row.active .group-main {
-  border-color: #237a6b;
-  box-shadow: inset 4px 0 0 #237a6b;
+  border-color: var(--primary);
+  box-shadow: inset 4px 0 0 var(--primary);
 }
 
 .group-row.favorite .group-main {
-  border-color: #c9a03a;
+  border-color: var(--primary-strong);
 }
 
 .group-main img,
@@ -362,7 +362,7 @@ h1 {
 }
 
 .group-main small {
-  color: #65716d;
+  color: var(--muted);
 }
 
 .tag-dot {
@@ -372,18 +372,19 @@ h1 {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  color: #237a6b;
-  background: #d6ece5;
+  color: var(--primary-strong);
+  background: var(--mist);
   font-weight: 900;
 }
 
 .favorite-button {
-  width: 34px;
+  width: 42px;
   height: 44px;
   border-radius: 8px;
-  color: #8a6417;
-  background: #efe0b5;
-  font-size: 17px;
+  color: var(--surface);
+  background: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .note-list {
@@ -395,19 +396,23 @@ h1 {
   padding-right: 2px;
 }
 
+.group-list + .note-list {
+  max-height: 42vh;
+}
+
 .note-row {
   min-height: 78px;
-  border: 1px solid #ddd7cb;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
   text-align: left;
-  color: #18211f;
-  background: #fffdf8;
+  color: var(--ink);
+  background: var(--surface);
 }
 
 .note-row.active {
-  border-color: #237a6b;
-  box-shadow: inset 4px 0 0 #237a6b;
+  border-color: var(--primary);
+  box-shadow: inset 4px 0 0 var(--primary);
 }
 
 .note-row strong,
@@ -421,7 +426,7 @@ h1 {
 
 .note-row span {
   margin-top: 5px;
-  color: #65716d;
+  color: var(--muted);
 }
 
 .domain-chip {
@@ -433,14 +438,14 @@ h1 {
   margin-top: 8px;
   padding: 3px 7px;
   border-radius: 999px;
-  color: #2d514b !important;
-  background: #d6ece5;
+  color: var(--primary-strong) !important;
+  background: var(--mist);
   font-size: 12px;
 }
 
 .note-row small {
   margin-top: 8px;
-  color: #7c8581;
+  color: var(--muted);
 }
 
 .editor {
@@ -502,8 +507,8 @@ h1 {
   gap: 8px;
   padding: 0 10px;
   border-radius: 8px;
-  color: #2d514b;
-  background: #d6ece5;
+  color: var(--primary-strong);
+  background: var(--mist);
   font-weight: 800;
 }
 
@@ -526,7 +531,7 @@ h1 {
   place-content: center;
   justify-items: center;
   gap: 16px;
-  color: #65716d;
+  color: var(--muted);
 }
 
 @media (max-width: 760px) {
@@ -537,7 +542,7 @@ h1 {
   .sidebar {
     min-height: 42vh;
     border-right: 0;
-    border-bottom: 1px solid #dcd6c9;
+    border-bottom: 1px solid var(--line);
   }
 
   .editor {

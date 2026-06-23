@@ -11,8 +11,10 @@ const url = ref('');
 const tags = ref('');
 const status = ref('');
 const saving = ref(false);
+const resultsExpanded = ref(false);
 
 const results = computed(() => searchNotes(notes.value, index.value, query.value, 8));
+const resultLabel = computed(() => (query.value ? `${results.value.length} matches` : `${results.value.length} recent`));
 const canSave = computed(() => body.value.trim() || title.value.trim() || url.value.trim());
 
 onMounted(async () => {
@@ -74,18 +76,21 @@ function copyNote(note) {
         <h1>Vivlos Notes</h1>
         <p>{{ notes.length }} saved</p>
       </div>
-      <button class="icon-button" type="button" title="Open manager" @click="openManager">□</button>
+      <button class="icon-button" type="button" title="Open manager" @click="openManager">Open</button>
     </header>
 
     <section class="search-zone">
       <input v-model="query" type="search" autocomplete="off" placeholder="Search prompts, URLs, tags" />
-      <div class="results" aria-live="polite">
+      <button class="secondary expand-button" type="button" @click="resultsExpanded = !resultsExpanded">
+        {{ resultsExpanded ? 'Hide results' : `Show results (${resultLabel})` }}
+      </button>
+      <div v-if="resultsExpanded" class="results" aria-live="polite">
         <article v-for="note in results" :key="note.id" class="result">
           <button type="button" class="result-main" @click="copyNote(note)">
             <strong>{{ note.title }}</strong>
             <span>{{ note.body || note.url }}</span>
           </button>
-          <a v-if="note.url" :href="note.url" target="_blank" rel="noreferrer" title="Open URL">↗</a>
+          <a v-if="note.url" :href="note.url" target="_blank" rel="noreferrer" title="Open URL">Go</a>
         </article>
         <p v-if="query && !results.length" class="empty">No matches yet</p>
       </div>
@@ -108,10 +113,10 @@ function copyNote(note) {
 .popup-shell {
   height: 520px;
   display: grid;
-  grid-template-rows: auto minmax(140px, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
-  background: #f7f3eb;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
 }
 
 .topbar,
@@ -134,14 +139,14 @@ p {
 
 .topbar p {
   margin-top: 4px;
-  color: #65716d;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .search-zone {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -151,8 +156,13 @@ p {
   padding: 0 10px;
 }
 
+.expand-button {
+  width: 100%;
+}
+
 .results {
   min-height: 0;
+  max-height: 154px;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -172,13 +182,13 @@ p {
   border-radius: 8px;
   padding: 9px 10px;
   text-align: left;
-  color: #18211f;
-  background: #fffdf8;
-  border: 1px solid #e2ded2;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .result-main:hover {
-  border-color: #9bb5aa;
+  border-color: var(--primary);
 }
 
 .result strong,
@@ -195,7 +205,7 @@ p {
 
 .result span {
   margin-top: 3px;
-  color: #65716d;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -204,17 +214,18 @@ p {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  color: #18211f;
-  background: #e5e9de;
+  color: var(--surface);
+  background: var(--primary-strong);
   text-decoration: none;
   font-weight: 800;
+  font-size: 12px;
 }
 
 .capture {
   display: grid;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #ddd7cb;
+  border-top: 1px solid var(--line);
 }
 
 .capture textarea {

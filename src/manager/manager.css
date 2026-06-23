@@ -5,5 +5,5 @@ body,
 }
 
 body {
-  background: #f7f3eb;
+  background: var(--surface-soft);
 }
